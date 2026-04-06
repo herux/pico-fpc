@@ -1,6 +1,6 @@
 # Pico-FPC: Raspberry Pi Pico SDK for Free Pascal
 
-Proyek konversi Raspberry Pi Pico SDK dari C ke Free Pascal untuk mikrokontroler RP2040/RP2350.
+Raspberry Pi Pico SDK conversion from C to Free Pascal for mikrokontroler RP2040/RP2350.
 
 ## Struktur Proyek
 
