@@ -2,7 +2,7 @@
 
 Raspberry Pi Pico SDK conversion from C to Free Pascal for mikrokontroler RP2040/RP2350.
 
-## Folder Strukture
+## Folder Structure
 
 ```
 pico-fpc/
