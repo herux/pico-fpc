@@ -228,12 +228,11 @@ const
   IO_BANK0_GPIO_CTRL_FUNCSEL_BITS = $0000001F;
   IO_BANK0_GPIO_CTRL_FUNCSEL_LSB  = 0;
 
-var
-  { Hardware register pointers }
-  sio_hw: PSIO_HW absolute SIO_BASE;
-  io_bank0_hw: PIO_BANK0_HW absolute IO_BANK0_BASE;
-  pads_bank0_hw: PPADS_BANK0_HW absolute PADS_BANK0_BASE;
-  resets_hw: PRESETS_HW absolute RESETS_BASE;
+  { Hardware register pointers - cast base addresses to typed pointers }
+  sio_hw: PSIO_HW = PSIO_HW(SIO_BASE);
+  io_bank0_hw: PIO_BANK0_HW = PIO_BANK0_HW(IO_BANK0_BASE);
+  pads_bank0_hw: PPADS_BANK0_HW = PPADS_BANK0_HW(PADS_BANK0_BASE);
+  resets_hw: PRESETS_HW = PRESETS_HW(RESETS_BASE);
 
 { Atomic register access helpers }
 { For RP2040, atomic set/clear/xor is done via address aliasing }

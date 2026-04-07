@@ -151,12 +151,8 @@ procedure gpio_set_function(gpio: LongWord; fn: TGpioFunction);
 begin
   if gpio >= NUM_BANK0_GPIOS then Exit;
   
-  { Set function in IO_BANK0 }
-  hw_write_masked(
-    io_bank0_hw^.gpio[gpio].ctrl,
-    LongWord(fn) shl IO_BANK0_GPIO_CTRL_FUNCSEL_LSB,
-    IO_BANK0_GPIO_CTRL_FUNCSEL_BITS
-  );
+  { Direct pointer access like blink_standalone - each GPIO has status(+0) and ctrl(+4) = 8 bytes }
+  PLongWord(IO_BANK0_BASE + (gpio * 8) + 4)^ := LongWord(fn);
 end;
 
 function gpio_get_function(gpio: LongWord): TGpioFunction;
@@ -204,6 +200,9 @@ begin
 end;
 
 procedure gpio_set_dir(gpio: LongWord; direction: TGpioDirection);
+const
+  GPIO_OE_SET = SIO_BASE + $024;
+  GPIO_OE_CLR = SIO_BASE + $028;
 var
   mask: LongWord;
 begin
@@ -211,9 +210,9 @@ begin
   
   mask := 1 shl gpio;
   if direction = gdOutput then
-    sio_hw^.gpio_oe_set := mask
+    PLongWord(GPIO_OE_SET)^ := mask
   else
-    sio_hw^.gpio_oe_clr := mask;
+    PLongWord(GPIO_OE_CLR)^ := mask;
 end;
 
 function gpio_get_dir(gpio: LongWord): TGpioDirection;
@@ -248,6 +247,9 @@ begin
 end;
 
 procedure gpio_put(gpio: LongWord; value: Boolean);
+const
+  GPIO_OUT_SET = SIO_BASE + $014;
+  GPIO_OUT_CLR = SIO_BASE + $018;
 var
   mask: LongWord;
 begin
@@ -255,9 +257,9 @@ begin
   
   mask := 1 shl gpio;
   if value then
-    sio_hw^.gpio_out_set := mask
+    PLongWord(GPIO_OUT_SET)^ := mask
   else
-    sio_hw^.gpio_out_clr := mask;
+    PLongWord(GPIO_OUT_CLR)^ := mask;
 end;
 
 procedure gpio_put_masked(mask, value: LongWord);
@@ -276,8 +278,10 @@ begin
 end;
 
 procedure gpio_clr_mask(mask: LongWord);
+const
+  GPIO_OUT_CLR = SIO_BASE + $018;
 begin
-  sio_hw^.gpio_out_clr := mask;
+  PLongWord(GPIO_OUT_CLR)^ := mask;
 end;
 
 procedure gpio_xor_mask(mask: LongWord);

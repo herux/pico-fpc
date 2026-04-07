@@ -28,21 +28,29 @@ procedure unreset_block_wait(bits: LongWord);
 
 implementation
 
+const
+  RESETS_RESET = RESETS_BASE;        // offset 0
+  RESETS_RESET_DONE = RESETS_BASE + $08; // offset 8
+
 procedure reset_block(bits: LongWord);
 begin
-  hw_set_bits(resets_hw^.reset, bits);
+  { Set bits in reset register - put blocks into reset }
+  PLongWord(RESETS_RESET)^ := PLongWord(RESETS_RESET)^ or bits;
 end;
 
 procedure unreset_block(bits: LongWord);
 begin
-  hw_clear_bits(resets_hw^.reset, bits);
+  { Clear bits in reset register - take blocks out of reset }
+  PLongWord(RESETS_RESET)^ := PLongWord(RESETS_RESET)^ and not bits;
 end;
 
 procedure unreset_block_wait(bits: LongWord);
 begin
-  hw_clear_bits(resets_hw^.reset, bits);
-  while (resets_hw^.reset_done and bits) <> bits do
-    { wait for reset done };
+  { Clear bits to unreset - direct pointer access like blink_standalone }
+  PLongWord(RESETS_RESET)^ := PLongWord(RESETS_RESET)^ and not bits;
+  { Wait for reset done }
+  while (PLongWord(RESETS_RESET_DONE)^ and bits) <> bits do
+    { wait };
 end;
 
 end.

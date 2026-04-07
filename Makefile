@@ -56,7 +56,7 @@ FPC_WIFI_FLAGS = -Tembedded \
                  -k-Llib \
                  -k-lcyw43_stub
 
-.PHONY: all clean blink wifi_blink wifi_lib wifi_stub uf2 help
+.PHONY: all clean blink wifi_blink wifi_lib wifi_stub uf2 help upload
 
 all: $(BUILD_DIR) blink wifi_stub wifi_blink
 
@@ -108,19 +108,56 @@ clean-wifi:
 	rm -rf build-wifi
 	rm -f $(LIB_DIR)/libpico_wifi.a $(LIB_DIR)/libcyw43_stub.a
 
+# Upload to Pico (must be in BOOTSEL mode)
+# Usage: make upload <name>  (e.g., make upload blink)
+PICO_MOUNT = /Volumes/RPI-RP2
+
+upload:
+	@if [ -z "$(filter-out $@,$(MAKECMDGOALS))" ]; then \
+		echo "Usage: make upload <name>"; \
+		echo "Example: make upload blink"; \
+		exit 1; \
+	fi
+	@TARGET="$(filter-out $@,$(MAKECMDGOALS))"; \
+	UF2="$(BUILD_DIR)/$$TARGET.uf2"; \
+	if [ ! -f "$$UF2" ]; then \
+		echo "Error: $$UF2 not found. Build it first."; \
+		exit 1; \
+	fi; \
+	if [ -d "$(PICO_MOUNT)" ]; then \
+		echo "Uploading $$TARGET.uf2 to Pico..."; \
+		cp "$$UF2" "$(PICO_MOUNT)/"; \
+		echo "Done! Pico will reboot."; \
+	else \
+		echo "Error: Pico not found. Hold BOOTSEL and connect USB."; \
+		exit 1; \
+	fi
+
+# Catch-all to prevent "No rule to make target" error for upload arguments
+ifneq ($(filter upload,$(MAKECMDGOALS)),)
+%:
+	@:
+endif
+
 # Help target
 help:
 	@echo "============================================"
 	@echo "  Pico-FPC Build System"
 	@echo "============================================"
 	@echo ""
-	@echo "Targets:"
+	@echo "Build Targets:"
 	@echo "  all        - Build all examples"
 	@echo "  blink      - Build blink example (Pico)"
 	@echo "  wifi_blink - Build WiFi blink example (Pico W)"
 	@echo "  wifi_stub  - Build minimal CYW43 stub library"
 	@echo "  wifi_lib   - Build full WiFi library from pico-sdk"
 	@echo "  bin        - Convert to binary"
+	@echo ""
+	@echo "Upload (Pico must be in BOOTSEL mode):"
+	@echo "  make upload <name>  - Upload <name>.uf2 to Pico"
+	@echo "  Example: make upload blink"
+	@echo ""
+	@echo "Clean Targets:"
 	@echo "  clean      - Remove build files"
 	@echo "  clean-wifi - Remove WiFi build files"
 	@echo ""

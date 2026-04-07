@@ -43,14 +43,12 @@ const
 function time_us_64: QWord;
 var
   lo, hi: LongWord;
-  pTimeLR: PLongWord absolute TIMER_TIME_LR;
-  pTimeHR: PLongWord absolute TIMER_TIME_HR;
 begin
   { Read hi first, then lo, then hi again to check for rollover }
   repeat
-    hi := pTimeHR^;
-    lo := pTimeLR^;
-  until pTimeHR^ = hi;
+    hi := PLongWord(TIMER_TIME_HR)^;
+    lo := PLongWord(TIMER_TIME_LR)^;
+  until PLongWord(TIMER_TIME_HR)^ = hi;
   
   Result := (QWord(hi) shl 32) or lo;
 end;
@@ -82,19 +80,26 @@ begin
 end;
 
 procedure reset_block(bits: LongWord);
+const
+  RESETS_RESET = RESETS_BASE;
 begin
-  hw_set_bits(resets_hw^.reset, bits);
+  PLongWord(RESETS_RESET)^ := PLongWord(RESETS_RESET)^ or bits;
 end;
 
 procedure unreset_block(bits: LongWord);
+const
+  RESETS_RESET = RESETS_BASE;
 begin
-  hw_clear_bits(resets_hw^.reset, bits);
+  PLongWord(RESETS_RESET)^ := PLongWord(RESETS_RESET)^ and not bits;
 end;
 
 procedure unreset_block_wait(bits: LongWord);
+const
+  RESETS_RESET = RESETS_BASE;
+  RESETS_RESET_DONE = RESETS_BASE + $08;
 begin
-  hw_clear_bits(resets_hw^.reset, bits);
-  while (resets_hw^.reset_done and bits) <> bits do
+  PLongWord(RESETS_RESET)^ := PLongWord(RESETS_RESET)^ and not bits;
+  while (PLongWord(RESETS_RESET_DONE)^ and bits) <> bits do
     { wait for reset done };
 end;
 
