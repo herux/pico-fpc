@@ -21,8 +21,13 @@
 # Build directories
 build/
 bin/
-lib/
 units/
+build-wifi/
+
+# Library files (user builds or downloads)
+lib/*.a
+lib/*.o
+!lib/.gitkeep
 
 # Linker files
 *.map
