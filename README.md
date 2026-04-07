@@ -24,8 +24,6 @@ pico-fpc/
 ├── examples/               # Example programs
 │   └── blink/
 │       ├── blink.pas       # LED blink with pico unit
-│       ├── blink_gpio.pas  # LED blink with gpio unit
-│       └── blink_standalone.pas  # Direct register access
 ├── build/                  # Build output (UF2, ELF, etc.)
 ├── linker/                 # Linker scripts
 ├── lib/                    # Compiled libraries
