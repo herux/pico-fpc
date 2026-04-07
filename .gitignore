@@ -1,0 +1,71 @@
+# Free Pascal compiled units
+*.ppu
+*.o
+*.a
+*.or
+*.res
+*.compiled
+*.rst
+*.rsj
+
+# Executables and binaries
+*.exe
+*.dll
+*.so
+*.dylib
+*.elf
+*.bin
+*.hex
+*.uf2
+
+# Build directories
+build/
+bin/
+lib/
+units/
+
+# Linker files
+*.map
+link*.res
+ppas.sh
+ppas.bat
+
+# Backup files
+*.bak
+*.~*
+*~
+
+# IDE and editor files
+*.lps
+*.lpi.local
+*.session
+.vscode/
+.idea/
+*.dcu
+*.dof
+*.dsk
+*.cfg.bak
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Thumbnails
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+
+# FPC config backups
+fpc.cfg.bak
+
+# Old makefiles
+Makefile.old
