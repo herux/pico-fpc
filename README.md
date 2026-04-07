@@ -35,7 +35,7 @@ pico-fpc/
 ## Building
 
 ```bash
-make
+make help
 ```
 
 ## Based on
