@@ -21,7 +21,7 @@ uses
 
 const
   LED_PIN = PICO_DEFAULT_LED_PIN;  { GPIO 25 on Raspberry Pi Pico }
-  DELAY_MS = 250;
+  DELAY_MS = 100;
 
 begin
   { Initialize stdio (unresets IO_BANK0 and PADS_BANK0) }

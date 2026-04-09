@@ -40,6 +40,28 @@ const
   TIMER_TIME_LR = TIMER_BASE + $28;
   TIMER_TIME_HR = TIMER_BASE + $2C;
 
+  { XOSC and CLOCKS registers used to get stable reference clock (12MHz crystal) }
+  XOSC_CTRL          = XOSC_BASE + $00;
+  XOSC_STATUS        = XOSC_BASE + $04;
+  XOSC_STARTUP       = XOSC_BASE + $0C;
+
+  CLOCKS_CLK_REF_CTRL     = CLOCKS_BASE + $30;
+  CLOCKS_CLK_REF_DIV      = CLOCKS_BASE + $34;
+  CLOCKS_CLK_REF_SELECTED = CLOCKS_BASE + $38;
+
+  WATCHDOG_TICK           = WATCHDOG_BASE + $2C;
+
+  XOSC_CTRL_FREQ_RANGE_1_15MHZ = $00000AA0;
+  XOSC_CTRL_ENABLE_MAGIC       = $00FAB000;
+  XOSC_STATUS_STABLE_BITS      = $80000000;
+
+  CLOCKS_CLK_REF_CTRL_SRC_XOSC_CLKSRC         = 2;
+  CLOCKS_CLK_REF_DIV_INT_1                    = 1 shl 8;
+  CLOCKS_CLK_REF_SELECTED_XOSC                = 1 shl 2;
+
+  WATCHDOG_TICK_ENABLE_BITS                   = 1 shl 9;
+  WATCHDOG_TICK_CYCLES_12MHZ                  = 12;
+
 function time_us_64: QWord;
 var
   lo, hi: LongWord;
@@ -103,13 +125,51 @@ begin
     { wait for reset done };
 end;
 
+procedure init_stable_ref_clock;
+begin
+  { Configure and enable XOSC 12MHz }
+  PLongWord(XOSC_CTRL)^ := XOSC_CTRL_FREQ_RANGE_1_15MHZ;
+  PLongWord(XOSC_STARTUP)^ := 47; { same startup delay used by pico-sdk }
+  PLongWord(XOSC_CTRL)^ := PLongWord(XOSC_CTRL)^ or XOSC_CTRL_ENABLE_MAGIC;
+
+  while (PLongWord(XOSC_STATUS)^ and XOSC_STATUS_STABLE_BITS) = 0 do
+    { wait for crystal stable };
+
+  { Switch glitchless clk_ref source directly to XOSC with divider = 1 }
+  PLongWord(CLOCKS_CLK_REF_DIV)^ := CLOCKS_CLK_REF_DIV_INT_1;
+  PLongWord(CLOCKS_CLK_REF_CTRL)^ := CLOCKS_CLK_REF_CTRL_SRC_XOSC_CLKSRC;
+
+  while (PLongWord(CLOCKS_CLK_REF_SELECTED)^ and CLOCKS_CLK_REF_SELECTED_XOSC) = 0 do
+    { wait for clk_ref source switch };
+end;
+
+procedure init_timer_tick_1mhz;
+begin
+  { On RP2040, timer/SysTick derive from watchdog tick generator.
+    Program it explicitly to 1MHz from clk_ref (12MHz / 12). }
+  PLongWord(WATCHDOG_TICK)^ := WATCHDOG_TICK_CYCLES_12MHZ or WATCHDOG_TICK_ENABLE_BITS;
+end;
+
 procedure stdio_init_all;
 begin
-  { TODO: Initialize stdio (UART/USB) }
-  { For now this is a stub }
-  
-  { Unreset IO_BANK0 and PADS_BANK0 }
-  unreset_block_wait(RESETS_RESET_IO_BANK0_BITS or RESETS_RESET_PADS_BANK0_BITS);
+  init_stable_ref_clock;
+  init_timer_tick_1mhz;
+
+  { Unreset IO_BANK0, PADS_BANK0, and TIMER }
+  unreset_block_wait(RESETS_RESET_IO_BANK0_BITS or 
+                     RESETS_RESET_PADS_BANK0_BITS or
+                     RESETS_RESET_TIMER_BITS);
+end;
+
+{ _haltproc is called by FPC runtime when program exits (halt/exit call) }
+{ For embedded systems, this should be an infinite loop }
+{ Note: For flash builds, crt0.S provides this symbol - use --allow-multiple-definition }
+procedure _haltproc; public name '_haltproc'; noreturn;
+begin
+  while True do
+    asm
+      nop
+    end;
 end;
 
 end.

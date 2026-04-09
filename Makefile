@@ -8,11 +8,13 @@ FPC = /Users/herux/fpcupdeluxe/fpc/bin/aarch64-darwin/ppcarm
 
 # ARM tools
 OBJCOPY = /opt/homebrew/bin/arm-none-eabi-objcopy
+AS = /opt/homebrew/bin/arm-none-eabi-as
 
 # Directories
 HARDWARE_DIR = src/hardware
 PICO_DIR = src/pico
 WIFI_DIR = src/wifi
+BOOT_DIR = src/boot
 EXAMPLES_DIR = examples
 BUILD_DIR = build
 LIB_DIR = lib
@@ -56,6 +58,9 @@ FPC_WIFI_FLAGS = -Tembedded \
                  -k-Llib \
                  -k-lcyw43_stub
 
+# Converting elf to uf2
+PICOTOOL = /opt/homebrew/bin/picotool
+
 .PHONY: all clean blink wifi_blink wifi_lib wifi_stub uf2 help upload
 
 all: $(BUILD_DIR) blink wifi_stub wifi_blink
@@ -63,12 +68,45 @@ all: $(BUILD_DIR) blink wifi_stub wifi_blink
 $(BUILD_DIR):
 	@mkdir -p $(BUILD_DIR)
 
-# Build blink example
+# Build blink example (RAM mode - for testing)
+# Uses custom memory script and --noinhibit-exec to handle FPC system unit relocations
 blink: $(BUILD_DIR)
-	@echo "Compiling blink..."
-	$(FPC) $(FPC_FLAGS) $(EXAMPLES_DIR)/blink/blink.pas
-	@echo "Done: $(BUILD_DIR)/blink.elf"
+	@echo "Compiling blink (RAM mode)..."
+	$(FPC) $(FPC_FLAGS) -k"--script=rp2040_memory.ld" -k"--noinhibit-exec" $(EXAMPLES_DIR)/blink/blink.pas
+	@echo "Converting to UF2..."
+	$(PICOTOOL) uf2 convert $(BUILD_DIR)/blink.elf $(BUILD_DIR)/blink.uf2 --family rp2040
+	@echo "Done:"
 	@ls -la $(BUILD_DIR)/blink.*
+
+# Build blink example (FLASH mode - persistent)
+blink_flash: $(BUILD_DIR) $(BUILD_DIR)/boot2.o $(BUILD_DIR)/crt0.o
+	@echo "Compiling blink (FLASH mode)..."
+	$(FPC) $(FPC_FLAGS) \
+		-k"-T rp2040_flash.ld" \
+		-k"$(BUILD_DIR)/boot2.o" \
+		-k"$(BUILD_DIR)/crt0.o" \
+		-k"--allow-multiple-definition" \
+		-k"--noinhibit-exec" \
+		$(EXAMPLES_DIR)/blink/blink.pas
+	@echo "Converting to UF2..."
+	$(PICOTOOL) uf2 convert $(BUILD_DIR)/blink.elf $(BUILD_DIR)/blink.uf2 --family rp2040
+	@echo "Done (FLASH mode - will persist after power cycle):"
+	@ls -la $(BUILD_DIR)/blink.*
+
+# Assemble boot2 (XIP setup)
+$(BUILD_DIR)/boot2.o: $(BOOT_DIR)/boot2.S
+	@echo "Assembling boot2..."
+	$(AS) -mcpu=cortex-m0plus -mthumb -o $@ $<
+
+# Assemble crt0 (startup code for flash)
+$(BUILD_DIR)/crt0.o: $(BOOT_DIR)/crt0.S
+	@echo "Assembling crt0..."
+	$(AS) -mcpu=cortex-m0plus -mthumb -o $@ $<
+
+# Assemble crt0_ram (minimal startup for RAM mode)
+$(BUILD_DIR)/crt0_ram.o: $(BOOT_DIR)/crt0_ram.S
+	@echo "Assembling crt0_ram..."
+	$(AS) -mcpu=cortex-m0plus -mthumb -o $@ $<
 
 # Build WiFi blink example (for Pico W)
 wifi_blink: $(BUILD_DIR)
@@ -148,6 +186,7 @@ help:
 	@echo "Build Targets:"
 	@echo "  all        - Build all examples"
 	@echo "  blink      - Build blink example (Pico)"
+	@echo "  blink_flash- Build blink example in FLASH mode (persistent)"
 	@echo "  wifi_blink - Build WiFi blink example (Pico W)"
 	@echo "  wifi_stub  - Build minimal CYW43 stub library"
 	@echo "  wifi_lib   - Build full WiFi library from pico-sdk"

@@ -12,6 +12,12 @@ MEMORY
 /* Entry point */
 ENTRY(PASCALMAIN)
 
+/* Program headers - required for UF2 conversion */
+PHDRS
+{
+    ram_text PT_LOAD FLAGS(7);  /* RWX */
+}
+
 SECTIONS
 {
     /* Code section */
@@ -31,7 +37,7 @@ SECTIONS
         
         . = ALIGN(4);
         _etext = .;
-    } > RAM
+    } > RAM :ram_text
 
     /* Data section */
     .data : ALIGN(4)
@@ -44,7 +50,7 @@ SECTIONS
         
         . = ALIGN(4);
         _edata = .;
-    } > RAM
+    } > RAM :ram_text
 
     /* BSS section */
     .bss : ALIGN(4)
@@ -57,7 +63,7 @@ SECTIONS
         
         . = ALIGN(4);
         _bss_end = .;
-    } > RAM
+    } > RAM :ram_text
 
     /* Stack */
     .stack (NOLOAD) : ALIGN(8)
