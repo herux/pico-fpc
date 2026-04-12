@@ -14,6 +14,7 @@ pico-fpc/
 │   ├── hardware/           # Hardware abstraction units
 │   │   ├── clocks.pas
 │   │   ├── gpio.pas
+│   │   ├── pwm.pas
 │   │   ├── resets.pas
 │   │   ├── rp2040.pas
 │   │   ├── timer.pas
@@ -35,8 +36,13 @@ pico-fpc/
 │   ├── startup_rp2040.S    # Legacy startup source
 │   └── wifi_blink.pas      # Pico W blink example entry
 ├── examples/               # Example programs
-│   └── blink/
-│       ├── blink.pas       # LED blink with pico unit
+│   ├── blink/
+│   │   └── blink.pas       # LED blink with pico unit
+│   ├── pwm/
+│   │   └── pwm_test.pas    # LED brightness sweep via PWM
+│   └── uart/
+│       ├── uart_test.pas   # UART heartbeat transmit
+│       └── uart_echo.pas   # UART echo server
 ├── build/                  # Build output (UF2, ELF, etc.)
 ├── build-wifi/             # pico-sdk/cmake WiFi build artifacts
 ├── linker/                 # Linker scripts
@@ -69,9 +75,11 @@ pico-fpc/
 ## Building
 
 ```bash
-make help           # Show available targets
-make blink          # Build blink example
-make upload blink   # Upload to Pico (BOOTSEL mode)
+make help              # Show available targets
+make blink             # Build blink example (RAM)
+make blink_flash       # Build blink example (FLASH)
+make pwm_test_flash    # Build PWM example (FLASH)
+make uart_echo_flash   # Build UART echo example (FLASH)
 ```
 
 ## Status
@@ -81,10 +89,11 @@ make upload blink   # Upload to Pico (BOOTSEL mode)
 | GPIO | ✅ Working |
 | Timer | ✅ Working |
 | Resets | ✅ Working |
-| UART | 🔄 In progress |
+| Clock init (XOSC + WATCHDOG_TICK) | ✅ Working |
+| PWM | ✅ Working |
+| UART | 🔄 Testing |
 | SPI | 📋 Planned |
 | I2C | 📋 Planned |
-| PWM | 📋 Planned |
 | WiFi (CYW43) | 🔄 In progress |
 
 ## Based on
