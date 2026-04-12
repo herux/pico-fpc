@@ -36,6 +36,9 @@ procedure stdio_init_all;
 
 implementation
 
+uses
+  clocks, uart, platform;
+
 const
   TIMER_TIME_LR = TIMER_BASE + $28;
   TIMER_TIME_HR = TIMER_BASE + $2C;
@@ -152,6 +155,9 @@ end;
 
 procedure stdio_init_all;
 begin
+  { Keep reported peripheral clocks consistent for UART baud math }
+  clocks_init;
+
   init_stable_ref_clock;
   init_timer_tick_1mhz;
 
@@ -159,6 +165,10 @@ begin
   unreset_block_wait(RESETS_RESET_IO_BANK0_BITS or 
                      RESETS_RESET_PADS_BANK0_BITS or
                      RESETS_RESET_TIMER_BITS);
+
+  { Initialize default UART stdio (uart0 on GPIO0/GPIO1 at 115200) }
+  uart_set_pin(uart0_hw, PICO_DEFAULT_UART_TX_PIN, PICO_DEFAULT_UART_RX_PIN);
+  uart_init(uart0_hw, PICO_DEFAULT_UART_BAUD_RATE);
 end;
 
 { _haltproc is called by FPC runtime when program exits (halt/exit call) }

@@ -61,9 +61,9 @@ FPC_WIFI_FLAGS = -Tembedded \
 # Converting elf to uf2
 PICOTOOL = /opt/homebrew/bin/picotool
 
-.PHONY: all clean blink wifi_blink wifi_lib wifi_stub uf2 help upload
+.PHONY: all clean blink blink_flash pwm_test pwm_test_flash uart_test uart_test_flash uart_echo uart_echo_flash wifi_blink wifi_lib wifi_stub uf2 help upload
 
-all: $(BUILD_DIR) blink wifi_stub wifi_blink
+all: $(BUILD_DIR) blink pwm_test uart_test uart_echo wifi_stub wifi_blink
 
 $(BUILD_DIR):
 	@mkdir -p $(BUILD_DIR)
@@ -92,6 +92,78 @@ blink_flash: $(BUILD_DIR) $(BUILD_DIR)/boot2.o $(BUILD_DIR)/crt0.o
 	$(PICOTOOL) uf2 convert $(BUILD_DIR)/blink.elf $(BUILD_DIR)/blink.uf2 --family rp2040
 	@echo "Done (FLASH mode - will persist after power cycle):"
 	@ls -la $(BUILD_DIR)/blink.*
+
+# Build PWM test example (RAM mode)
+pwm_test: $(BUILD_DIR)
+	@echo "Compiling pwm_test (RAM mode)..."
+	$(FPC) $(FPC_FLAGS) -k"--script=rp2040_memory.ld" -k"--noinhibit-exec" $(EXAMPLES_DIR)/pwm/pwm_test.pas
+	@echo "Converting to UF2..."
+	$(PICOTOOL) uf2 convert $(BUILD_DIR)/pwm_test.elf $(BUILD_DIR)/pwm_test.uf2 --family rp2040
+	@echo "Done:"
+	@ls -la $(BUILD_DIR)/pwm_test.*
+
+# Build PWM test example (FLASH mode - persistent)
+pwm_test_flash: $(BUILD_DIR) $(BUILD_DIR)/boot2.o $(BUILD_DIR)/crt0.o
+	@echo "Compiling pwm_test (FLASH mode)..."
+	$(FPC) $(FPC_FLAGS) \
+		-k"-T rp2040_flash.ld" \
+		-k"$(BUILD_DIR)/boot2.o" \
+		-k"$(BUILD_DIR)/crt0.o" \
+		-k"--allow-multiple-definition" \
+		-k"--noinhibit-exec" \
+		$(EXAMPLES_DIR)/pwm/pwm_test.pas
+	@echo "Converting to UF2..."
+	$(PICOTOOL) uf2 convert $(BUILD_DIR)/pwm_test.elf $(BUILD_DIR)/pwm_test.uf2 --family rp2040
+	@echo "Done (FLASH mode - will persist after power cycle):"
+	@ls -la $(BUILD_DIR)/pwm_test.*
+
+# Build UART test example (RAM mode)
+uart_test: $(BUILD_DIR)
+	@echo "Compiling uart_test (RAM mode)..."
+	$(FPC) $(FPC_FLAGS) -k"--script=rp2040_memory.ld" -k"--noinhibit-exec" $(EXAMPLES_DIR)/uart/uart_test.pas
+	@echo "Converting to UF2..."
+	$(PICOTOOL) uf2 convert $(BUILD_DIR)/uart_test.elf $(BUILD_DIR)/uart_test.uf2 --family rp2040
+	@echo "Done:"
+	@ls -la $(BUILD_DIR)/uart_test.*
+
+# Build UART test example (FLASH mode - persistent)
+uart_test_flash: $(BUILD_DIR) $(BUILD_DIR)/boot2.o $(BUILD_DIR)/crt0.o
+	@echo "Compiling uart_test (FLASH mode)..."
+	$(FPC) $(FPC_FLAGS) \
+		-k"-T rp2040_flash.ld" \
+		-k"$(BUILD_DIR)/boot2.o" \
+		-k"$(BUILD_DIR)/crt0.o" \
+		-k"--allow-multiple-definition" \
+		-k"--noinhibit-exec" \
+		$(EXAMPLES_DIR)/uart/uart_test.pas
+	@echo "Converting to UF2..."
+	$(PICOTOOL) uf2 convert $(BUILD_DIR)/uart_test.elf $(BUILD_DIR)/uart_test.uf2 --family rp2040
+	@echo "Done (FLASH mode - will persist after power cycle):"
+	@ls -la $(BUILD_DIR)/uart_test.*
+
+# Build UART echo example (RAM mode)
+uart_echo: $(BUILD_DIR)
+	@echo "Compiling uart_echo (RAM mode)..."
+	$(FPC) $(FPC_FLAGS) -k"--script=rp2040_memory.ld" -k"--noinhibit-exec" $(EXAMPLES_DIR)/uart/uart_echo.pas
+	@echo "Converting to UF2..."
+	$(PICOTOOL) uf2 convert $(BUILD_DIR)/uart_echo.elf $(BUILD_DIR)/uart_echo.uf2 --family rp2040
+	@echo "Done:"
+	@ls -la $(BUILD_DIR)/uart_echo.*
+
+# Build UART echo example (FLASH mode - persistent)
+uart_echo_flash: $(BUILD_DIR) $(BUILD_DIR)/boot2.o $(BUILD_DIR)/crt0.o
+	@echo "Compiling uart_echo (FLASH mode)..."
+	$(FPC) $(FPC_FLAGS) \
+		-k"-T rp2040_flash.ld" \
+		-k"$(BUILD_DIR)/boot2.o" \
+		-k"$(BUILD_DIR)/crt0.o" \
+		-k"--allow-multiple-definition" \
+		-k"--noinhibit-exec" \
+		$(EXAMPLES_DIR)/uart/uart_echo.pas
+	@echo "Converting to UF2..."
+	$(PICOTOOL) uf2 convert $(BUILD_DIR)/uart_echo.elf $(BUILD_DIR)/uart_echo.uf2 --family rp2040
+	@echo "Done (FLASH mode - will persist after power cycle):"
+	@ls -la $(BUILD_DIR)/uart_echo.*
 
 # Assemble boot2 (XIP setup)
 $(BUILD_DIR)/boot2.o: $(BOOT_DIR)/boot2.S
@@ -141,6 +213,8 @@ clean:
 	rm -f src/pico/*.ppu src/pico/*.o
 	rm -f src/wifi/*.ppu src/wifi/*.o
 	rm -f examples/blink/*.ppu examples/blink/*.o examples/blink/*.elf examples/blink/*.bin examples/blink/*.hex
+	rm -f examples/pwm/*.ppu examples/pwm/*.o examples/pwm/*.elf examples/pwm/*.bin examples/pwm/*.hex
+	rm -f examples/uart/*.ppu examples/uart/*.o examples/uart/*.elf examples/uart/*.bin examples/uart/*.hex
 
 clean-wifi:
 	rm -rf build-wifi
@@ -187,6 +261,12 @@ help:
 	@echo "  all        - Build all examples"
 	@echo "  blink      - Build blink example (Pico)"
 	@echo "  blink_flash- Build blink example in FLASH mode (persistent)"
+	@echo "  pwm_test   - Build PWM test example (Pico)"
+	@echo "  pwm_test_flash - Build PWM test in FLASH mode (persistent)"
+	@echo "  uart_test  - Build UART test example (Pico)"
+	@echo "  uart_test_flash - Build UART test in FLASH mode (persistent)"
+	@echo "  uart_echo  - Build UART echo example (Pico)"
+	@echo "  uart_echo_flash - Build UART echo in FLASH mode (persistent)"
 	@echo "  wifi_blink - Build WiFi blink example (Pico W)"
 	@echo "  wifi_stub  - Build minimal CYW43 stub library"
 	@echo "  wifi_lib   - Build full WiFi library from pico-sdk"
