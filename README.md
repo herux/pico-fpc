@@ -17,6 +17,7 @@ pico-fpc/
 │   │   ├── pwm.pas
 │   │   ├── resets.pas
 │   │   ├── rp2040.pas
+│   │   ├── spi.pas
 │   │   ├── timer.pas
 │   │   └── uart.pas
 │   ├── pico/               # Pico SDK abstraction layer
@@ -40,6 +41,8 @@ pico-fpc/
 │   │   └── blink.pas       # LED blink with pico unit
 │   ├── pwm/
 │   │   └── pwm_test.pas    # LED brightness sweep via PWM
+│   ├── spi/
+│   │   └── spi_test.pas    # SPI0 MOSI/MISO loopback test
 │   └── uart/
 │       ├── uart_test.pas   # UART heartbeat transmit
 │       └── uart_echo.pas   # UART echo server
@@ -79,6 +82,7 @@ make help              # Show available targets
 make blink             # Build blink example (RAM)
 make blink_flash       # Build blink example (FLASH)
 make pwm_test_flash    # Build PWM example (FLASH)
+make spi_test_flash    # Build SPI loopback example (FLASH)
 make uart_echo_flash   # Build UART echo example (FLASH)
 ```
 
@@ -92,7 +96,7 @@ make uart_echo_flash   # Build UART echo example (FLASH)
 | Clock init (XOSC + WATCHDOG_TICK) | ✅ Working |
 | PWM | ✅ Working |
 | UART | 🔄 Testing |
-| SPI | 📋 Planned |
+| SPI | 🔄 Testing |
 | I2C | 📋 Planned |
 | WiFi (CYW43) | 🔄 In progress |
 

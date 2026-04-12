@@ -11,10 +11,13 @@ program uart_test;
 
 uses
   pico,
-  uart;
+  uart,
+  platform;
 
 begin
   stdio_init_all;
+  uart_set_pin(uart0_hw, PICO_DEFAULT_UART_TX_PIN, PICO_DEFAULT_UART_RX_PIN);
+  uart_init(uart0_hw, PICO_DEFAULT_UART_BAUD_RATE);
 
   while True do
   begin

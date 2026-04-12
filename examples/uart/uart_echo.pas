@@ -11,13 +11,16 @@ program uart_echo;
 
 uses
   pico,
-  uart;
+  uart,
+  platform;
 
 var
   c: Char;
 
 begin
   stdio_init_all;
+  uart_set_pin(uart0_hw, PICO_DEFAULT_UART_TX_PIN, PICO_DEFAULT_UART_RX_PIN);
+  uart_init(uart0_hw, PICO_DEFAULT_UART_BAUD_RATE);
   uart_puts(uart0_hw, 'uart_echo ready'#13#10);
 
   while True do

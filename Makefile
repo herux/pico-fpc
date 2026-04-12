@@ -61,9 +61,9 @@ FPC_WIFI_FLAGS = -Tembedded \
 # Converting elf to uf2
 PICOTOOL = /opt/homebrew/bin/picotool
 
-.PHONY: all clean blink blink_flash pwm_test pwm_test_flash uart_test uart_test_flash uart_echo uart_echo_flash wifi_blink wifi_lib wifi_stub uf2 help upload
+.PHONY: all clean blink blink_flash pwm_test pwm_test_flash uart_test uart_test_flash uart_echo uart_echo_flash spi_test spi_test_flash wifi_blink wifi_lib wifi_stub uf2 help upload
 
-all: $(BUILD_DIR) blink pwm_test uart_test uart_echo wifi_stub wifi_blink
+all: $(BUILD_DIR) blink pwm_test uart_test uart_echo spi_test wifi_stub wifi_blink
 
 $(BUILD_DIR):
 	@mkdir -p $(BUILD_DIR)
@@ -165,6 +165,30 @@ uart_echo_flash: $(BUILD_DIR) $(BUILD_DIR)/boot2.o $(BUILD_DIR)/crt0.o
 	@echo "Done (FLASH mode - will persist after power cycle):"
 	@ls -la $(BUILD_DIR)/uart_echo.*
 
+# Build SPI test example (RAM mode)
+spi_test: $(BUILD_DIR)
+	@echo "Compiling spi_test (RAM mode)..."
+	$(FPC) $(FPC_FLAGS) -k"--script=rp2040_memory.ld" -k"--noinhibit-exec" $(EXAMPLES_DIR)/spi/spi_test.pas
+	@echo "Converting to UF2..."
+	$(PICOTOOL) uf2 convert $(BUILD_DIR)/spi_test.elf $(BUILD_DIR)/spi_test.uf2 --family rp2040
+	@echo "Done:"
+	@ls -la $(BUILD_DIR)/spi_test.*
+
+# Build SPI test example (FLASH mode - persistent)
+spi_test_flash: $(BUILD_DIR) $(BUILD_DIR)/boot2.o $(BUILD_DIR)/crt0.o
+	@echo "Compiling spi_test (FLASH mode)..."
+	$(FPC) $(FPC_FLAGS) \
+		-k"-T rp2040_flash.ld" \
+		-k"$(BUILD_DIR)/boot2.o" \
+		-k"$(BUILD_DIR)/crt0.o" \
+		-k"--allow-multiple-definition" \
+		-k"--noinhibit-exec" \
+		$(EXAMPLES_DIR)/spi/spi_test.pas
+	@echo "Converting to UF2..."
+	$(PICOTOOL) uf2 convert $(BUILD_DIR)/spi_test.elf $(BUILD_DIR)/spi_test.uf2 --family rp2040
+	@echo "Done (FLASH mode - will persist after power cycle):"
+	@ls -la $(BUILD_DIR)/spi_test.*
+
 # Assemble boot2 (XIP setup)
 $(BUILD_DIR)/boot2.o: $(BOOT_DIR)/boot2.S
 	@echo "Assembling boot2..."
@@ -215,6 +239,7 @@ clean:
 	rm -f examples/blink/*.ppu examples/blink/*.o examples/blink/*.elf examples/blink/*.bin examples/blink/*.hex
 	rm -f examples/pwm/*.ppu examples/pwm/*.o examples/pwm/*.elf examples/pwm/*.bin examples/pwm/*.hex
 	rm -f examples/uart/*.ppu examples/uart/*.o examples/uart/*.elf examples/uart/*.bin examples/uart/*.hex
+	rm -f examples/spi/*.ppu examples/spi/*.o examples/spi/*.elf examples/spi/*.bin examples/spi/*.hex
 
 clean-wifi:
 	rm -rf build-wifi
@@ -231,13 +256,20 @@ upload:
 		exit 1; \
 	fi
 	@TARGET="$(filter-out $@,$(MAKECMDGOALS))"; \
-	UF2="$(BUILD_DIR)/$$TARGET.uf2"; \
+	UF2_TARGET="$$TARGET"; \
+	case "$$UF2_TARGET" in \
+		*_flash) UF2_TARGET="$${UF2_TARGET%_flash}" ;; \
+	esac; \
+	if [ -n "$$TARGET" ]; then \
+		$(MAKE) --no-print-directory $$TARGET; \
+	fi; \
+	UF2="$(BUILD_DIR)/$$UF2_TARGET.uf2"; \
 	if [ ! -f "$$UF2" ]; then \
 		echo "Error: $$UF2 not found. Build it first."; \
 		exit 1; \
 	fi; \
 	if [ -d "$(PICO_MOUNT)" ]; then \
-		echo "Uploading $$TARGET.uf2 to Pico..."; \
+		echo "Uploading $$UF2_TARGET.uf2 to Pico..."; \
 		cp "$$UF2" "$(PICO_MOUNT)/"; \
 		echo "Done! Pico will reboot."; \
 	else \
@@ -267,6 +299,8 @@ help:
 	@echo "  uart_test_flash - Build UART test in FLASH mode (persistent)"
 	@echo "  uart_echo  - Build UART echo example (Pico)"
 	@echo "  uart_echo_flash - Build UART echo in FLASH mode (persistent)"
+	@echo "  spi_test   - Build SPI loopback test example (Pico)"
+	@echo "  spi_test_flash - Build SPI loopback test in FLASH mode (persistent)"
 	@echo "  wifi_blink - Build WiFi blink example (Pico W)"
 	@echo "  wifi_stub  - Build minimal CYW43 stub library"
 	@echo "  wifi_lib   - Build full WiFi library from pico-sdk"
