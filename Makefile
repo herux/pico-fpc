@@ -189,6 +189,7 @@ spi_test_flash: $(BUILD_DIR) $(BUILD_DIR)/boot2.o $(BUILD_DIR)/crt0.o
 	@echo "Done (FLASH mode - will persist after power cycle):"
 	@ls -la $(BUILD_DIR)/spi_test.*
 
+
 # Assemble boot2 (XIP setup)
 $(BUILD_DIR)/boot2.o: $(BOOT_DIR)/boot2.S
 	@echo "Assembling boot2..."
