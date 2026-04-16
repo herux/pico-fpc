@@ -147,12 +147,43 @@ function gpio_is_input_hysteresis_enabled(gpio: LongWord): Boolean;
 
 implementation
 
+procedure gpio_pad_write_masked(gpio, values, mask: LongWord); inline;
+var
+  reg_ptr: PLongWord;
+begin
+  reg_ptr := @pads_bank0_hw^.io[gpio];
+  reg_ptr^ := (reg_ptr^ and not mask) or (values and mask);
+end;
+
+procedure gpio_pad_set_bits(gpio, mask: LongWord); inline;
+var
+  reg_ptr: PLongWord;
+begin
+  reg_ptr := @pads_bank0_hw^.io[gpio];
+  reg_ptr^ := reg_ptr^ or mask;
+end;
+
+procedure gpio_pad_clear_bits(gpio, mask: LongWord); inline;
+var
+  reg_ptr: PLongWord;
+begin
+  reg_ptr := @pads_bank0_hw^.io[gpio];
+  reg_ptr^ := reg_ptr^ and not mask;
+end;
+
 procedure gpio_set_function(gpio: LongWord; fn: TGpioFunction);
 begin
   if gpio >= NUM_BANK0_GPIOS then Exit;
-  
-  { Direct pointer access like blink_standalone - each GPIO has status(+0) and ctrl(+4) = 8 bytes }
-  PLongWord(IO_BANK0_BASE + (gpio * 8) + 4)^ := LongWord(fn);
+
+  { Match pico-sdk behavior: allow the peripheral to drive the pad and receive input. }
+  gpio_pad_write_masked(
+    gpio,
+    PADS_BANK0_GPIO_IE_BITS,
+    PADS_BANK0_GPIO_IE_BITS or PADS_BANK0_GPIO_OD_BITS
+  );
+
+  { Zero overrides and select the peripheral function. }
+  io_bank0_hw^.gpio[gpio].ctrl := LongWord(fn);
 end;
 
 function gpio_get_function(gpio: LongWord): TGpioFunction;
@@ -314,8 +345,8 @@ begin
   if down then
     value := value or PADS_BANK0_GPIO_PDE_BITS;
     
-  hw_write_masked(
-    pads_bank0_hw^.io[gpio],
+  gpio_pad_write_masked(
+    gpio,
     value,
     PADS_BANK0_GPIO_PUE_BITS or PADS_BANK0_GPIO_PDE_BITS
   );
@@ -357,17 +388,17 @@ begin
   if gpio >= NUM_BANK0_GPIOS then Exit;
   
   if enabled then
-    hw_set_bits(pads_bank0_hw^.io[gpio], PADS_BANK0_GPIO_IE_BITS)
+    gpio_pad_set_bits(gpio, PADS_BANK0_GPIO_IE_BITS)
   else
-    hw_clear_bits(pads_bank0_hw^.io[gpio], PADS_BANK0_GPIO_IE_BITS);
+    gpio_pad_clear_bits(gpio, PADS_BANK0_GPIO_IE_BITS);
 end;
 
 procedure gpio_set_drive_strength(gpio: LongWord; drive: TGpioDriveStrength);
 begin
   if gpio >= NUM_BANK0_GPIOS then Exit;
   
-  hw_write_masked(
-    pads_bank0_hw^.io[gpio],
+  gpio_pad_write_masked(
+    gpio,
     LongWord(drive) shl 4,
     PADS_BANK0_GPIO_DRIVE_BITS
   );
@@ -385,8 +416,8 @@ procedure gpio_set_slew_rate(gpio: LongWord; slew: TGpioSlewRate);
 begin
   if gpio >= NUM_BANK0_GPIOS then Exit;
   
-  hw_write_masked(
-    pads_bank0_hw^.io[gpio],
+  gpio_pad_write_masked(
+    gpio,
     LongWord(slew),
     PADS_BANK0_GPIO_SLEWFAST_BITS
   );
@@ -405,9 +436,9 @@ begin
   if gpio >= NUM_BANK0_GPIOS then Exit;
   
   if enabled then
-    hw_set_bits(pads_bank0_hw^.io[gpio], PADS_BANK0_GPIO_SCHMITT_BITS)
+    gpio_pad_set_bits(gpio, PADS_BANK0_GPIO_SCHMITT_BITS)
   else
-    hw_clear_bits(pads_bank0_hw^.io[gpio], PADS_BANK0_GPIO_SCHMITT_BITS);
+    gpio_pad_clear_bits(gpio, PADS_BANK0_GPIO_SCHMITT_BITS);
 end;
 
 function gpio_is_input_hysteresis_enabled(gpio: LongWord): Boolean;

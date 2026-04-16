@@ -99,9 +99,8 @@ _zero_bss_test:
     cmp r1, r2
     blo _zero_bss_loop
 
-    /* Call FPC main */
-    ldr r1, =PASCALMAIN
-    blx r1
+    /* Branch directly so the linker emits a Thumb call to Pascal main. */
+    bl PASCALMAIN
 
     /* If main returns, loop forever */
 _halt:

@@ -106,7 +106,7 @@ const
 
 type
   { SIO (Single-cycle I/O) Hardware Structure }
-  TSIO_HW = packed record
+  TSIO_HW = record
     cpuid: LongWord;
     gpio_in: LongWord;
     gpio_hi_in: LongWord;
@@ -145,26 +145,26 @@ type
   PSIO_HW = ^TSIO_HW;
 
   { IO Bank0 Status/Control for single GPIO }
-  TIO_BANK0_GPIO = packed record
+  TIO_BANK0_GPIO = record
     status: LongWord;
     ctrl: LongWord;
   end;
 
   { IO Bank0 Hardware Structure }
-  TIO_BANK0_HW = packed record
+  TIO_BANK0_HW = record
     gpio: array[0..NUM_BANK0_GPIOS-1] of TIO_BANK0_GPIO;
     intr: array[0..3] of LongWord;
-    proc0_irq_ctrl: packed record
+    proc0_irq_ctrl: record
       inte: array[0..3] of LongWord;
       intf: array[0..3] of LongWord;
       ints: array[0..3] of LongWord;
     end;
-    proc1_irq_ctrl: packed record
+    proc1_irq_ctrl: record
       inte: array[0..3] of LongWord;
       intf: array[0..3] of LongWord;
       ints: array[0..3] of LongWord;
     end;
-    dormant_wake_irq_ctrl: packed record
+    dormant_wake_irq_ctrl: record
       inte: array[0..3] of LongWord;
       intf: array[0..3] of LongWord;
       ints: array[0..3] of LongWord;
@@ -173,14 +173,14 @@ type
   PIO_BANK0_HW = ^TIO_BANK0_HW;
 
   { Pads Bank0 Hardware Structure }
-  TPADS_BANK0_HW = packed record
+  TPADS_BANK0_HW = record
     voltage_select: LongWord;
     io: array[0..NUM_BANK0_GPIOS-1] of LongWord;
   end;
   PPADS_BANK0_HW = ^TPADS_BANK0_HW;
   
   { Resets Hardware Structure }
-  TRESETS_HW = packed record
+  TRESETS_HW = record
     reset: LongWord;
     wdsel: LongWord;
     reset_done: LongWord;

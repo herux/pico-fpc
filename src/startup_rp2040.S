@@ -32,9 +32,10 @@ _start:
     ldr r0, =__StackTop
     mov sp, r0
     
-    // Call Pascal main directly (bypassing fpc_initializeunits)
-    ldr r0, =PASCALMAIN
-    bx r0
+    // Branch directly so the linker emits a Thumb call to Pascal main.
+    bl PASCALMAIN
+
+    b _hang
 
 .thumb_func
 .global _hang
