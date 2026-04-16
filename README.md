@@ -97,7 +97,7 @@ make uart_echo_flash   # Build UART echo example (FLASH)
 | PWM | ✅ Working |
 | UART | 🔄 Testing |
 | SPI | 🔄 Testing |
-| I2C | 📋 Working |
+| I2C | ✅ Working |
 | WiFi (CYW43) | 🔄 In progress |
 
 ## Based on
