@@ -19,7 +19,7 @@ uses
 
 type
   { UART hardware structure }
-  TUART_HW = packed record
+  TUART_HW = record
     dr: LongWord;         { Data Register }
     rsr: LongWord;        { Receive Status Register }
     _pad0: array[0..3] of LongWord;
@@ -64,8 +64,8 @@ const
   UART_CR_UARTEN = $01;  { UART enable }
 
 var
-  uart0_hw: PUART_HW absolute UART0_BASE;
-  uart1_hw: PUART_HW absolute UART1_BASE;
+  uart0_hw: PUART_HW = PUART_HW(UART0_BASE);
+  uart1_hw: PUART_HW = PUART_HW(UART1_BASE);
 
 { Initialize UART }
 function uart_init(uart: PUART_HW; baudrate: LongWord): LongWord;
@@ -99,6 +99,17 @@ procedure uart_set_pin(uart: PUART_HW; tx_pin, rx_pin: LongWord);
 
 implementation
 
+const
+  UART_INIT_TIMEOUT = 1000000;
+
+function uart_get_reset_bits(uart: PUART_HW): LongWord;
+begin
+  if uart = uart0_hw then
+    Result := RESETS_RESET_UART0_BITS
+  else
+    Result := RESETS_RESET_UART1_BITS;
+end;
+
 function uart_get_index(uart: PUART_HW): LongWord;
 begin
   if uart = uart0_hw then
@@ -110,39 +121,42 @@ end;
 function uart_init(uart: PUART_HW; baudrate: LongWord): LongWord;
 var
   reset_bits: LongWord;
+  wait_count: LongWord;
 begin
-  { Determine reset bits based on UART }
-  if uart = uart0_hw then
-    reset_bits := RESETS_RESET_UART0_BITS
-  else
-    reset_bits := RESETS_RESET_UART1_BITS;
-  
-  { Reset UART }
-  reset_block(reset_bits);
-  unreset_block_wait(reset_bits);
+  reset_bits := uart_get_reset_bits(uart);
+
+  { Release reset and wait for the peripheral to become ready. }
+  unreset_block(reset_bits);
+
+  wait_count := 0;
+  while ((resets_hw^.reset_done and reset_bits) <> reset_bits) and (wait_count < UART_INIT_TIMEOUT) do
+    Inc(wait_count);
+
+  uart^.cr := 0;
+  uart^.lcr_h := 0;
+  uart^.imsc := 0;
+  uart^.dmacr := 0;
+  uart^.rsr := 0;
+
+  { Clear pending interrupts before reconfiguration. }
+  uart^.icr := $7FF;
   
   { Set baudrate }
   Result := uart_set_baudrate(uart, baudrate);
   
-  { Set format: 8N1 }
-  uart_set_format(uart, 8, 1, False);
-  
+  { Set format: 8N1 with FIFO enabled. }
+  uart^.lcr_h := UART_LCR_H_WLEN_8 or UART_LCR_H_FEN;
+
   { Enable UART, TX, and RX }
   uart^.cr := UART_CR_UARTEN or UART_CR_TXE or UART_CR_RXE;
-  
-  { Enable FIFOs }
-  hw_set_bits(uart^.lcr_h, UART_LCR_H_FEN);
 end;
 
 procedure uart_deinit(uart: PUART_HW);
 var
   reset_bits: LongWord;
 begin
-  if uart = uart0_hw then
-    reset_bits := RESETS_RESET_UART0_BITS
-  else
-    reset_bits := RESETS_RESET_UART1_BITS;
-  
+  reset_bits := uart_get_reset_bits(uart);
+
   reset_block(reset_bits);
 end;
 
@@ -151,12 +165,19 @@ var
   baud_rate_div: LongWord;
   peri_freq: LongWord;
 begin
+  if baudrate = 0 then
+    baudrate := 115200;
+
   { Get peripheral clock frequency }
   peri_freq := clock_get_hz(clk_peri);
+  if peri_freq = 0 then
+    peri_freq := 125000000;
   
   { Calculate baud rate divisor }
   { baud_rate_div = 64 * peri_freq / (16 * baudrate) = 4 * peri_freq / baudrate }
   baud_rate_div := (4 * peri_freq) div baudrate;
+  if baud_rate_div = 0 then
+    baud_rate_div := 1;
   
   { Set integer and fractional parts }
   uart^.ibrd := baud_rate_div shr 6;
@@ -236,7 +257,10 @@ begin
   
   { Set RX pin function to UART }
   if rx_pin < NUM_BANK0_GPIOS then
+  begin
     gpio_set_function(rx_pin, gfUART);
+    gpio_set_input_enabled(rx_pin, True);
+  end;
 end;
 
 end.

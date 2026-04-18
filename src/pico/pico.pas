@@ -51,6 +51,15 @@ const
   CLOCKS_CLK_REF_CTRL     = CLOCKS_BASE + $30;
   CLOCKS_CLK_REF_DIV      = CLOCKS_BASE + $34;
   CLOCKS_CLK_REF_SELECTED = CLOCKS_BASE + $38;
+  CLOCKS_CLK_SYS_CTRL     = CLOCKS_BASE + $3C;
+  CLOCKS_CLK_SYS_DIV      = CLOCKS_BASE + $40;
+  CLOCKS_CLK_SYS_SELECTED = CLOCKS_BASE + $44;
+  CLOCKS_CLK_PERI_CTRL    = CLOCKS_BASE + $48;
+
+  PLL_SYS_CS              = PLL_SYS_BASE + $00;
+  PLL_SYS_PWR             = PLL_SYS_BASE + $04;
+  PLL_SYS_FBDIV_INT       = PLL_SYS_BASE + $08;
+  PLL_SYS_PRIM            = PLL_SYS_BASE + $0C;
 
   WATCHDOG_TICK           = WATCHDOG_BASE + $2C;
 
@@ -61,9 +70,18 @@ const
   CLOCKS_CLK_REF_CTRL_SRC_XOSC_CLKSRC         = 2;
   CLOCKS_CLK_REF_DIV_INT_1                    = 1 shl 8;
   CLOCKS_CLK_REF_SELECTED_XOSC                = 1 shl 2;
+  CLOCKS_CLK_SYS_CTRL_SRC_CLKSRC_CLK_SYS_AUX  = 1;
+  CLOCKS_CLK_SYS_CTRL_AUXSRC_CLKSRC_PLL_SYS   = 0 shl 5;
+  CLOCKS_CLK_SYS_SELECTED_PLL_SYS             = 1 shl 1;
+  CLOCKS_CLK_PERI_CTRL_ENABLE                 = 1 shl 11;
 
   WATCHDOG_TICK_ENABLE_BITS                   = 1 shl 9;
   WATCHDOG_TICK_CYCLES_12MHZ                  = 12;
+
+  PLL_PWR_PD_BITS                             = 1 shl 0;
+  PLL_PWR_VCOPD_BITS                          = 1 shl 5;
+  PLL_PWR_POSTDIVPD_BITS                      = 1 shl 3;
+  PLL_CS_LOCK_BITS                            = 1 shl 31;
 
 function time_us_64: QWord;
 var
@@ -128,7 +146,7 @@ begin
     { wait for reset done };
 end;
 
-procedure init_stable_ref_clock;
+procedure xosc_init;
 begin
   { Configure and enable XOSC 12MHz }
   PLongWord(XOSC_CTRL)^ := XOSC_CTRL_FREQ_RANGE_1_15MHZ;
@@ -146,6 +164,47 @@ begin
     { wait for clk_ref source switch };
 end;
 
+procedure pll_sys_init_125mhz;
+begin
+  reset_block(RESETS_RESET_PLL_SYS_BITS);
+  unreset_block_wait(RESETS_RESET_PLL_SYS_BITS);
+
+  { 12 MHz / 1 * 125 = 1500 MHz VCO; / 6 / 2 = 125 MHz output }
+  PLongWord(PLL_SYS_CS)^ := 1;
+  PLongWord(PLL_SYS_FBDIV_INT)^ := 125;
+  PLongWord(PLL_SYS_PWR)^ := 0;
+
+  while (PLongWord(PLL_SYS_CS)^ and PLL_CS_LOCK_BITS) = 0 do
+    { wait for pll lock };
+
+  PLongWord(PLL_SYS_PRIM)^ := (6 shl 16) or (2 shl 12);
+  hw_clear_bits(PLongWord(PLL_SYS_PWR)^, PLL_PWR_POSTDIVPD_BITS);
+end;
+
+procedure init_system_clock_125mhz;
+begin
+  pll_sys_init_125mhz;
+
+  { Configure clk_sys to use PLL_SYS auxiliary source. }
+  hw_write_masked(
+    PLongWord(CLOCKS_CLK_SYS_CTRL)^,
+    CLOCKS_CLK_SYS_CTRL_AUXSRC_CLKSRC_PLL_SYS,
+    $000000E0
+  );
+  hw_write_masked(
+    PLongWord(CLOCKS_CLK_SYS_CTRL)^,
+    CLOCKS_CLK_SYS_CTRL_SRC_CLKSRC_CLK_SYS_AUX,
+    $00000001
+  );
+  PLongWord(CLOCKS_CLK_SYS_DIV)^ := 1 shl 8;
+
+  while (PLongWord(CLOCKS_CLK_SYS_SELECTED)^ and CLOCKS_CLK_SYS_SELECTED_PLL_SYS) = 0 do
+    { wait for clk_sys source switch };
+
+  { Route clk_peri from clk_sys. }
+  PLongWord(CLOCKS_CLK_PERI_CTRL)^ := CLOCKS_CLK_PERI_CTRL_ENABLE;
+end;
+
 procedure init_timer_tick_1mhz;
 begin
   { On RP2040, timer/SysTick derive from watchdog tick generator.
@@ -155,10 +214,11 @@ end;
 
 procedure stdio_init_all;
 begin
-  { Keep reported peripheral clocks consistent for UART baud math }
-  clocks_init;
+  xosc_init;
+  init_system_clock_125mhz;
 
-  init_stable_ref_clock;
+  { Keep reported peripheral clocks consistent with the actual hardware clocks. }
+  clocks_init;
   init_timer_tick_1mhz;
 
   { Unreset IO_BANK0, PADS_BANK0, and TIMER }
