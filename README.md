@@ -1,3 +1,5 @@
+![WIP](https://img.shields.io/badge/status-work%20in%20progress-yellow?style=for-the-badge)
+
 # Pico-FPC: Raspberry Pi Pico SDK for Free Pascal
 
 Raspberry Pi Pico SDK conversion from C to Free Pascal for microcontroller RP2040/RP2350.
